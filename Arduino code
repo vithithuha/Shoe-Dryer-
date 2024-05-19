@@ -1,0 +1,114 @@
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h> // library for LCD 
+#include "SoftwareSerial.h" 
+#include "DFRobotDFPlayerMini.h" // library for DFPlayer 
+SoftwareSerial mySoftwareSerial(12, 11); // RX, TX
+DFRobotDFPlayerMini myDFPlayer;
+
+//Initialize 
+LiquidCrystal_I2C lcd(0X27, 16, 2);
+const int RelayPin = 6;
+const int btnOnPin = 8;
+const int btnInPin = 9;
+const int btnDePin = 10;
+int btnOn = 0;
+int btnIn = 0;
+int btnDe = 0;
+int timer = 0;
+
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+  mySoftwareSerial.begin(9600);
+  if (!myDFPlayer.begin(mySoftwareSerial, true, false)) {
+    while(true){
+      delay(0); 
+    }
+  }
+  myDFPlayer.volume(10); 
+
+  pinMode(btnOnPin, INPUT_PULLUP);
+  pinMode(btnInPin, INPUT_PULLUP);
+  pinMode(btnDePin, INPUT_PULLUP);
+  pinMode(RelayPin, OUTPUT);
+  digitalWrite(RelayPin, HIGH); //  set relay off
+
+  //set up screen
+  lcd.init();
+  lcd.backlight();
+  greetUser();
+  delay(3000);
+  lcd.clear(); 
+}
+void loop() {
+  editTimer();
+  displayTimes();
+  running();
+  digitalWrite(RelayPin, HIGH);
+}
+
+void greetUser(){
+  lcd.setCursor(3,0);
+  lcd.print("Welcome to");
+  lcd.setCursor(2,1);
+  lcd.print("Shoera-chan!");
+  myDFPlayer.play(3); delay(3000);
+}
+
+void displayTimes(){
+  lcd.setCursor(0, 0);
+  lcd.print("Drying time: ");
+  lcd.setCursor(4, 1);
+  lcd.print(String(timer) + " mins");
+}
+
+void running(){
+  lcd.clear();
+  myDFPlayer.play(2); delay(1000); //Play the second mp3 file
+  while (timer > 0 && digitalRead(btnOnPin) == HIGH){
+      // Activate the relay (turn on the hair dryer)
+      digitalWrite(RelayPin, LOW);
+      lcd.setCursor(2, 0);
+      lcd.print("Shoe dryer on");
+      lcd.setCursor(0, 1);
+      lcd.print("Time left:" + String(timer) + " mins");
+      delay(1000); // Wait for 1 second
+      timer--;
+      stop();
+  }
+  myDFPlayer.play(3);  //Play the third mp3
+  lcd.clear();
+}
+
+
+void stop(){
+  if (digitalRead(btnOnPin) == LOW){
+    digitalWrite(RelayPin, HIGH);
+    timer = 0;
+  }
+}
+
+void editTimer(){
+  lcd.setCursor(2, 0);
+  lcd.print("Edit Timer");
+
+  while (digitalRead(btnOnPin) == HIGH){
+    if (digitalRead(btnInPin) == LOW){
+      delay(500);
+      timer += 5;
+      if (timer > 60) {
+        timer = 60;
+      }
+      displayTimes();
+    }
+
+    if (digitalRead(btnDePin) == LOW && timer > 0){
+      delay(500);
+      timer -=5;
+      displayTimes();
+    }
+
+  }
+}
